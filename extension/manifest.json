@@ -3,8 +3,8 @@
   "name": "YouTube AI Summarizer",
   "version": "1.0",
   "description": "Summarize YouTube videos using OpenAI GPT-4",
-  "permission": ["scripting", "activeTab"],
-  "host_permission": ["https://www.youtube.com/*"],
+  "permissions": ["scripting", "activeTab"],
+  "host_permissions": ["https://www.youtube.com/*"],
   "background": {
     "service_worker": "background.js"
   },
