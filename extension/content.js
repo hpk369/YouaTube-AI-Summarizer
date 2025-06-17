@@ -53,6 +53,33 @@ function injectSidebar(videoTitle) {
     <div id="summary-result" style="margin-top:10px;"></div>
     `;
   document.body.appendChild(sidebar);
+
+  document.getElementById("fetch-summary").addEventListener("click", async () => {
+    const summaryResult = document.getElementById("summary-result");
+    summaryResult.innerHTML = "<em>Loading Summary...</em>";
+
+    // Simulate a dummy transcript
+    const dummyTranscript = "This is a placeholder transcript for this video.";
+
+    try {
+      const response = await fetch("https://localhost:5000/summarize", {
+        method: "POST",
+        headers: {
+          "Content-type": "application/json"
+        },
+        body: JSON.stringify({
+          title: videoTitle,
+          transcript: dummyTranscript
+        })
+      });
+
+      const data = await response.json();
+      summaryResult.innerHTMl = `<p>${data.summary}</p>`;
+    } catch(err) {
+      summaryResult.innerHTML = `<span style="color:red;">Failed to fetch summary.</span>`;
+      console.error("Summary error:", err);
+    }
+  });
 }
 
 observeVideoChange();
