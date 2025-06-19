@@ -28,13 +28,51 @@ async function handleVideoChange() {
   console.log("Detected new video:", title);
 
   // Prevent multiple injections
-  if(document.getElementsById("yt-ai-sidebar")) return;
+  if(document.getElementById("yt-ai-sidebar")) return;
 
   injectSidebar(title);
 }
 
+async function getYouTubeTranscript() {
+  try {
+    const ytInitialPlayerResponse = JSON.parse(
+      [...document.querySelector("script")]
+        .map(s => s.textContent)
+        .find(t => t.includes("ytInitialPlayerResponse"))
+        .match(/ytInitialPlayerResponse\s*=\s*(\{.*?\});/)[1]
+    );
+
+    const captionTracks = ytInitialPlayerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    if(!captionTracks || captionTracks.length === 0) return null;
+
+    const englishTrack = captionTracks.find(track => 
+      track.languageCode === "en" || track.vssId === "a.en"
+    ) || captionTracks[0];
+
+    const xmlUrl = englishTrack.baseUrl;
+
+    const res = await fetch(xmlUrl);
+    const xml = await res.text();
+
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xml, "text/xml");
+    const texts = xmlDoc.getElementsByTagName("text");
+
+    let transcript = "";
+    for (let i = 0; i < texts.length; i++) {
+      const text = texts[i].textContent.replace(/\n/g," ");
+      transcript += text + " ";
+    }
+
+    return transcript.trim();
+  } catch(e) {
+    console.error("Error extracting transcript: ", e);
+    return null;
+  }
+}
+
 function injectSidebar(videoTitle) {
-  const sidebar = doccument.createElement("div");
+  const sidebar = document.createElement("div");
   sidebar.id = "yt-ai-sidebar";
   sidebar.style.position = "fixed";
   sidebar.style.top = "80px";
@@ -56,12 +94,16 @@ function injectSidebar(videoTitle) {
 
   document.getElementById("fetch-summary").addEventListener("click", async () => {
     const summaryResult = document.getElementById("summary-result");
-    summaryResult.innerHTML = "<em>Loading Summary...</em>";
-
-    // Simulate a dummy transcript
-    const dummyTranscript = "This is a placeholder transcript for this video.";
+    summaryResult.innerHTML = "<em>Loading summary...</em>";
 
     try {
+      const transcript = await getYouTubeTranscript();
+
+      if(!transcript) {
+        summaryResult.innerHTML = "<span style='color:red;'>Transcript not found for this video.</span>";
+        return;
+      }
+    
       const response = await fetch("https://localhost:5000/summarize", {
         method: "POST",
         headers: {
